@@ -1,14 +1,16 @@
-let left = 0
+const TimeBlock = 60*5
+var t = 0
 
-function setTimer(time) {
-  left = time
+function reset() {
+  t = Date.now()
 }
 
-function getTimer() {
-  return left
+function getTime() {
+  return t
 }
 
 module.exports = {
-  setTimer,
-  getTimer
+  getTime,
+  reset,
+  TimeBlock
 }

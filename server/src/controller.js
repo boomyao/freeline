@@ -1,78 +1,71 @@
+const db = require('./db/index')
 const {
-  Line,
-  Node
-} = require('./db')
+  getTime,
+  TimeBlock,
+  reset
+} = require('./timer')
+const nanoid = require('nanoid')
 
-function addLine() {
-  return new Promise((resolve, reject) => {
-    const line = new Line()
-    line.save((err, p) => {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(p)
-    })
-  })
+function getLine() {
+  const line = db.get('lines').first().value()
+  const nodes = line.nodes.map(node => ({
+    id: node.id,
+    content: node.content,
+    created: node.created,
+    likeCount: node.like.length,
+    unlinkCount: node.unlike.length
+  }))
+  return {
+    line: {
+      id: line.id,
+      title: line.title,
+      nodes
+    },
+    time: getTime()
+  }
 }
 
-function addNode2Line(id, content) {
-  return new Promise(async (resolve, reject) => {
-    const line = await Line.findById(id)
-    
-    if (!line) {
-      reject('no have this line')
-      return
-    }
-
-    const node = new Node()
-    node.content = content
-    line.nodes.push(node)
-
-    line.save((err, item) => {
-      if (err) {
-        reject(err)
-        return
-      }
-      resolve(item)
-    })
-  })
+function addNode(content) {
+  if (Date.now() - getTime() < TimeBlock * 1000) return
+  const node = {
+    id: nanoid(8),
+    content,
+    created: Date.now(),
+    like: [],
+    unlike: []
+  }
+  db.get('lines').first()
+    .get('nodes')
+    .push(node)
+    .write()
+  reset()
+  return node
 }
 
-function voteNode(lid, nid, yrn) {
-  return new Promise(async (resolve, reject) => {
-    const line = await Line.findById(lid)
-
-    if (!line) {
-      reject('no have this line')
-      return
-    }
-
-    const node = await line.nodes.findById(nid)
-
-    if (!node) {
-      reject('no have this node')
-      return
-    }
-
-    if (yrn) {
-      node.noCount++
-    } else {
-      node.yesCount++
-    }
-
-    node.save((err, item) => {
-      if (err) {
-        reject('save error')
-        return
-      }
-      resolve(item)
+function vote(nid, uid, isLike) {
+  const node = db.get('lines').first()
+    .get('nodes')
+    .find({
+      id: nid
     })
-  })
+
+  const like = node.get('like')
+  const unlike = node.get('unlike')
+
+  if (like.indexOf(uid).value() > -1 || unlike.indexOf(uid).value() > -1) return
+
+  if (isLike) {
+    like.push(uid)
+      .write()
+  } else {
+    unlike
+      .push(uid)
+      .write()
+  }
 }
 
 module.exports = {
-  addLine,
-  addNode2Line,
-  voteNode
+  getLine,
+  addNode,
+  vote
 }
