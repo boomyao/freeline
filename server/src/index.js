@@ -3,9 +3,17 @@ const bodyParser = require('body-parser')
 const cookieParser = require('cookie-parser')
 const {getLine, addNode, vote} = require('./controller')
 const nanoid = require('nanoid')
+const logger = require('./log/logger')
 
 app.use(cookieParser())
 app.use(bodyParser.json())
+
+app.use((err, req, res, next) => {
+  if (err) {
+    logger.error(err)
+  }
+  next()
+})
 
 app.get('/line', (req, res) => {
   if (!req.cookies['uid']) {
@@ -29,6 +37,12 @@ app.post('/vote', (req, res) => {
   const distinctId = req.ip + req.cookies['uid']
   const {id, like} = req.body
   vote(id, distinctId, like)
+  res.end()
+})
+
+app.get('/report', (req, res) => {
+  logger.trace('/report', req.ip, req.query)
+  res.statusCode = 204
   res.end()
 })
 
